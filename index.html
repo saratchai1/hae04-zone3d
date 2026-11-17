@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="HAE04 water buffalo zone, as-built 3D from the laser scans of 16-17.11.2026">
+<meta name="robots" content="noindex, nofollow">
+<title>HAE04 Buffalo Zone 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed 3D canvas; survey-style instrument panel on the left, info card bottom-right, compass top-right. */
+:root {
+  --bg: #e9eee9;
+  --panel: rgba(247, 249, 246, 0.93);
+  --fg: #1a231f;
+  --muted: #56645d;
+  --line: rgba(26, 35, 31, 0.13);
+  --accent: #2c6a52;
+  --accent-ink: #f4f8f5;
+  --rust: #a8482a;
+  --chip: rgba(44, 106, 82, 0.10);
+  --shadow: 0 6px 24px rgba(20, 30, 25, 0.16);
+  --f-ui: "IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", Tahoma, system-ui, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1412; --panel: rgba(18, 25, 22, 0.92); --fg: #e4ebe7; --muted: #9aaba2; --line: rgba(228, 235, 231, 0.14);
+    --accent: #6cc09a; --accent-ink: #0e1412; --rust: #e0805c; --chip: rgba(108, 192, 154, 0.14); --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1412; --panel: rgba(18, 25, 22, 0.92); --fg: #e4ebe7; --muted: #9aaba2; --line: rgba(228, 235, 231, 0.14);
+  --accent: #6cc09a; --accent-ink: #0e1412; --rust: #e0805c; --chip: rgba(108, 192, 154, 0.14); --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-ui); overflow: hidden; }
+#view { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); backdrop-filter: blur(8px); }
+#side {
+  position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px));
+  width: 300px; max-height: calc(100% - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 14px; z-index: 5;
+}
+.eyebrow { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-family: var(--f-num); }
+h1 { font-size: 19px; line-height: 1.25; margin: 2px 0 0; font-weight: 600; text-wrap: balance; }
+.sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+.group { display: flex; flex-direction: column; gap: 8px; }
+.group > .lab { font-size: 12px; font-weight: 600; color: var(--muted); }
+.views { display: flex; flex-wrap: wrap; gap: 6px; }
+button { font: inherit; color: inherit; }
+.vbtn {
+  border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 5px 11px; font-size: 13px; cursor: pointer;
+}
+.vbtn:hover { background: var(--chip); }
+.vbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.vbtn:focus-visible, .tog input:focus-visible + span, #menu:focus-visible, #close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.layers { display: grid; grid-template-columns: 1fr; gap: 2px; }
+.tog { display: flex; align-items: center; gap: 9px; padding: 5px 4px; border-radius: 8px; cursor: pointer; font-size: 13.5px; }
+.tog:hover { background: var(--chip); }
+.tog input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.tog .box { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--muted); display: grid; place-items: center; flex: none; }
+.tog input:checked + .box { background: var(--accent); border-color: var(--accent); }
+.tog input:checked + .box::after { content: ""; width: 8px; height: 4px; border: 2px solid var(--accent-ink); border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+.tog .sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.tog .name { flex: 1; min-width: 0; }
+.tog .n { font-family: var(--f-num); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.species { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 13px; }
+.species .c { font-family: var(--f-num); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.bar { height: 4px; border-radius: 2px; background: var(--chip); grid-column: 1 / -1; margin-top: -1px; margin-bottom: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+.note { font-size: 11.5px; line-height: 1.5; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+#info {
+  position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  width: 290px; padding: 14px 16px; z-index: 6; display: flex; flex-direction: column; gap: 8px;
+}
+#info .t { font-size: 18px; font-weight: 600; line-height: 1.2; }
+#info .lat { font-style: italic; color: var(--muted); font-size: 13px; }
+#info dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 2px 0 0; font-size: 13px; }
+#info dt { color: var(--muted); }
+#info dd { margin: 0; font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.pill { display: inline-block; font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--accent); font-weight: 500; }
+.pill.warn { color: var(--rust); background: color-mix(in srgb, var(--rust) 14%, transparent); }
+#close { position: absolute; top: 8px; right: 8px; border: 0; background: transparent; cursor: pointer; font-size: 18px; color: var(--muted); width: 28px; height: 28px; border-radius: 6px; }
+#compass {
+  position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px));
+  width: 54px; height: 54px; border-radius: 50%; z-index: 5; display: grid; place-items: center;
+}
+#compass svg { width: 40px; height: 40px; }
+#hint {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  font-size: 12px; padding: 6px 12px; color: var(--muted); z-index: 4; white-space: nowrap;
+}
+#load { position: fixed; inset: 0; display: grid; place-items: center; z-index: 20; background: var(--bg); }
+#load .box2 { width: min(320px, 80vw); display: flex; flex-direction: column; gap: 10px; }
+#load .track { height: 6px; border-radius: 3px; background: var(--chip); overflow: hidden; }
+#load .track > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+#load .msg { font-size: 13px; color: var(--muted); font-family: var(--f-num); }
+#menu { display: none; }
+@media (max-width: 720px) {
+  #side { width: auto; right: max(12px, env(safe-area-inset-right, 0px)); top: auto; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); max-height: 58%; }
+  #side.closed { display: none; }
+  #menu {
+    display: block; position: fixed; left: max(12px, env(safe-area-inset-left, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    z-index: 7; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); cursor: pointer; font-size: 14px;
+  }
+  #info { left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: auto; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+  #hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { #load .track > i { transition: none; } }
+</style>
+</head>
+<body>
+
+<canvas id="view" tabindex="0" aria-label="แบบจำลอง 3 มิติ โซนควายน้ำ HAE04"></canvas>
+
+<div id="load" role="status" aria-live="polite">
+  <div class="box2">
+    <div class="eyebrow">HAE04 · As-built 3D</div>
+    <div style="font-size:17px;font-weight:600">กำลังโหลดโมเดลโซนควายน้ำ</div>
+    <div class="track"><i id="loadbar"></i></div>
+    <div class="msg" id="loadmsg">0.0 / 11.0 MB</div>
+  </div>
+</div>
+
+<aside id="side" class="panel closed" aria-label="แผงควบคุม">
+  <div>
+    <div class="eyebrow">HAE04 · โซนควายน้ำ · As-built</div>
+    <h1>แบบจำลอง 3 มิติจากสแกน</h1>
+    <div class="sub">Point cloud 11 สถานี (16–17.11.2026) · ต้นไม้วัดตำแหน่ง ความสูง และทรงพุ่มจากสแกน</div>
+  </div>
+  <div class="group">
+    <div class="lab">มุมมอง</div>
+    <div class="views" id="views"></div>
+  </div>
+  <div class="group">
+    <div class="lab">เลเยอร์</div>
+    <div class="layers" id="layers"></div>
+  </div>
+  <div class="group">
+    <div class="lab">ต้นไม้ที่พบในสแกน <span class="n" id="treecount" style="font-family:var(--f-num);font-weight:400"></span></div>
+    <div class="species" id="species"></div>
+  </div>
+  <div class="note">
+    ตำแหน่งต้นไม้, ความสูง, ความกว้างทรงพุ่ม วัดจากสแกนจริง · ชนิดจากแบบปลูก (PDF แผ่น 15–17) · โมเดลต้นไม้เป็นทรงตามกลุ่มชนิด (ตาล, ทรงสูงอย่างยางนา, ทรงพุ่มกลม, ทรงย้อย) ไม่ใช่รูปทรงจริงทีละต้น ·
+    กำแพง ทางเดิน สะพาน ราว บ่อ และผิวน้ำมาจากแบบ Revit ไม่ได้มาจากสแกน · ความสูงเป็นเมตรเหนือพื้นที่โคนต้น
+  </div>
+</aside>
+
+<button id="menu" type="button" aria-controls="side" aria-expanded="false">☰ เมนู</button>
+<div id="compass" class="panel" aria-label="ทิศเหนือ"><svg viewBox="-20 -20 40 40" id="needle"><polygon points="0,-15 5,3 0,0 -5,3" fill="var(--rust)"/><polygon points="0,15 5,3 0,0 -5,3" fill="var(--muted)" opacity="0.6"/><text x="0" y="-16" text-anchor="middle" font-size="7" font-family="IBM Plex Mono, monospace" fill="var(--fg)" dy="-1">N</text></svg></div>
+<div id="hint" class="panel">ลากเพื่อหมุน · คลิกขวาลากเพื่อเลื่อน · เลื่อนลูกกลิ้งเพื่อซูม · คลิกต้นไม้เพื่อดูข้อมูล</div>
+<section id="info" class="panel" hidden aria-live="polite">
+  <button id="close" type="button" aria-label="ปิด">×</button>
+  <div id="infobody"></div>
+</section>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { Sky } from "three/addons/objects/Sky.js";
+
+const $ = (id) => document.getElementById(id);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const small = matchMedia("(max-width: 720px)").matches;
+if (!small) $("side").classList.remove("closed");
+$("menu").addEventListener("click", () => {
+  const closed = $("side").classList.toggle("closed");
+  $("menu").setAttribute("aria-expanded", String(!closed));
+});
+
+// Blender (Z up, Revit frame) -> three (Y up), same as the glTF exporter
+const B = (x, y, z) => new THREE.Vector3(x, z, -y);
+
+const canvas = $("view");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(devicePixelRatio, small ? 1.5 : 1.75));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.62;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, 1, 0.3, 3000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.minDistance = 2;
+controls.maxDistance = 400;
+
+// sky, sun, environment
+const sky = new Sky();
+sky.scale.setScalar(2500);
+scene.add(sky);
+const su = sky.material.uniforms;
+su.turbidity.value = 5.5; su.rayleigh.value = 1.3; su.mieCoefficient.value = 0.004; su.mieDirectionalG.value = 0.82;
+const el = THREE.MathUtils.degToRad(42), az = THREE.MathUtils.degToRad(215);   // ~13:45 in November, sun to the SW
+const sunDir = B(Math.sin(az) * Math.cos(el), Math.cos(az) * Math.cos(el), Math.sin(el)).normalize();
+su.sunPosition.value.copy(sunDir);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+const sky2 = sky.clone(); envScene.add(sky2);
+scene.environment = pmrem.fromScene(envScene, 0.02).texture;
+const hemi = new THREE.HemisphereLight(0xdfe9f5, 0x6b5a44, 0.55);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff1dc, 2.6);
+const centre = B(48, -3, 0);
+sun.position.copy(centre).addScaledVector(sunDir, 160);
+sun.target.position.copy(centre);
+scene.add(sun, sun.target);
+sun.castShadow = true;
+sun.shadow.mapSize.set(small ? 2048 : 4096, small ? 2048 : 4096);
+Object.assign(sun.shadow.camera, { left: -72, right: 72, top: 72, bottom: -72, near: 20, far: 320 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.04;
+scene.fog = new THREE.Fog(0xc9d6dd, 180, 900);
+
+// ground beyond the scan
+const backdrop = new THREE.Mesh(new THREE.CircleGeometry(900, 64), new THREE.MeshStandardMaterial({ color: 0x9d8b6c, roughness: 1 }));
+backdrop.rotation.x = -Math.PI / 2;
+backdrop.position.set(centre.x, -2.6, centre.z);
+backdrop.receiveShadow = true;
+scene.add(backdrop);
+
+const layers = {};   // name -> array of objects
+const addTo = (k, o) => { (layers[k] ||= []).push(o); };
+
+// ---------- loading
+// Each model ships as base64 text (artifact hosting does not serve .glb); the leaf textures are plain PNGs in tex/.
+const files = { site: ["site.glb.b64.txt", 8208512], lib: ["trees_lib.glb.b64.txt", 2812480] };
+const got = {}, total = Object.values(files).reduce((s, f) => s + f[1], 0) / 1e6;
+const progress = () => {
+  const mb = Object.values(got).reduce((s, v) => s + v, 0) / 1e6;
+  $("loadbar").style.width = Math.min(100, (100 * mb) / total) + "%";
+  $("loadmsg").textContent = `${mb.toFixed(1)} / ${total.toFixed(1)} MB`;
+};
+const loader = new GLTFLoader();
+async function fetchB64(key) {
+  const url = files[key][0];
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+  let text;
+  if (r.body && r.body.getReader) {
+    const reader = r.body.getReader(), parts = [];
+    got[key] = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value); got[key] += value.length; progress();
+    }
+    text = await new Blob(parts).text();
+  } else {
+    text = await r.text(); got[key] = text.length; progress();
+  }
+  const bin = atob(text.trim());
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+const load = async (key) => {
+  const buf = await fetchB64(key);
+  return new Promise((res, rej) => loader.parse(buf, "", res, rej));
+};
+let data;
+
+function buildSite(root) {
+  const water = new THREE.MeshPhysicalMaterial({ color: 0x1a2a22, roughness: 0.06, metalness: 0.0, envMapIntensity: 1.4, transparent: true, opacity: 0.9 });
+  const meshes = [];
+  root.traverse((o) => { if (o.isMesh) meshes.push(o); });
+  for (const o of meshes) {
+    const n = o.name || (o.parent && o.parent.name) || "";
+    o.castShadow = true; o.receiveShadow = true;
+    if (n.startsWith("WATER")) { o.material = water; o.castShadow = false; addTo("water", o); }
+    else if (n.startsWith("Z_Terrain")) { o.castShadow = false; addTo("terrain", o); }
+    else if (n.startsWith("DES_")) addTo("design", o);
+    else if (n.startsWith("Z_LOG")) addTo("logs", o);
+    else if (n.startsWith("Z_ArtificialTree")) addTo("arttrees", o);
+    else addTo("rocks", o);
+    if (o.material && o.material.isMeshStandardMaterial && !n.startsWith("WATER")) { o.material.roughness = Math.max(o.material.roughness, 0.8); o.material.metalness = 0; }
+  }
+  scene.add(root);
+}
+
+const pickables = [];   // instanced meshes of trees
+const pickMap = new Map();   // mesh.uuid -> array of record indices
+function buildTrees(libRoot, js) {
+  libRoot.updateMatrixWorld(true);
+  const parts = {};   // lib -> [{geometry, material, local}]
+  libRoot.traverse((o) => {
+    if (!o.isMesh) return;
+    let node = o; while (node && !(node.name || "").startsWith("VAR__")) node = node.parent;
+    const name = node ? node.name : o.name;
+    const lib = name.split("__")[1];
+    if (!lib) return;
+    const m = o.material;
+    m.side = THREE.DoubleSide;
+    if (m.map) { m.transparent = false; m.alphaTest = 0.45; m.depthWrite = true; }
+    m.metalness = 0; m.roughness = Math.max(m.roughness ?? 0.7, 0.55);
+    (parts[lib] ||= []).push({ geometry: o.geometry, material: m, local: o.matrixWorld.clone(), leafy: !!m.map || /frond/.test(name) });
+  });
+  const byLib = {};
+  js.instances.forEach((r, i) => { (byLib[r.lib] ||= []).push(i); });
+  const tmp = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+  for (const [lib, idxs] of Object.entries(byLib)) {
+    const ps = parts[lib]; if (!ps) continue;
+    const isFrame = lib.includes("FRAME");
+    for (const p of ps) {
+      const im = new THREE.InstancedMesh(p.geometry, p.material, idxs.length);
+      idxs.forEach((ri, k) => {
+        const r = js.instances[ri];
+        q.setFromAxisAngle(up, r.r);
+        s.set(r.s[0], r.s[2], r.s[1]);
+        tmp.compose(B(r.p[0], r.p[1], r.p[2]), q, s).multiply(p.local);
+        im.setMatrixAt(k, tmp);
+      });
+      im.castShadow = true; im.receiveShadow = !p.leafy;
+      im.computeBoundingSphere();
+      scene.add(im);
+      addTo(isFrame ? "frames" : "trees", im);
+      if (!isFrame) { pickables.push(im); pickMap.set(im.uuid, idxs); }
+    }
+  }
+}
+
+const missingGroup = new THREE.Group();
+function buildMissing(js) {
+  scene.updateMatrixWorld(true);
+  const terr = (layers.terrain || [])[0];
+  const ray = new THREE.Raycaster();
+  const red = new THREE.MeshBasicMaterial({ color: 0xd2532e }), grey = new THREE.MeshBasicMaterial({ color: 0x8b958f });
+  const pin = new THREE.CylinderGeometry(0.06, 0.06, 2.2, 8), ring = new THREE.TorusGeometry(0.55, 0.07, 6, 28);
+  js.plan_not_found.forEach((m) => {
+    const p = B(m.x, m.y, 0);
+    let y = -0.5;
+    if (terr) { ray.set(new THREE.Vector3(p.x, 60, p.z), new THREE.Vector3(0, -1, 0)); const h = ray.intersectObject(terr, false)[0]; if (h) y = h.point.y; }
+    const mat = m.status.startsWith("in scan") ? red : grey;
+    const g = new THREE.Group();
+    const a = new THREE.Mesh(pin, mat); a.position.y = 1.1;
+    const b = new THREE.Mesh(ring, mat); b.rotation.x = Math.PI / 2; b.position.y = 0.08;
+    g.add(a, b); g.position.set(p.x, y, p.z); g.userData = m;
+    missingGroup.add(g);
+  });
+  scene.add(missingGroup);
+  addTo("missing", missingGroup);
+}
+
+// ---------- UI
+const LAYERS = [
+  ["trees", "ต้นไม้ (โมเดลตามชนิด)", "#3f8a5c"], ["frames", "โครงค้ำต้นไม้", "#7c1d22"], ["arttrees", "ต้นไม้เทียม REV E", "#8a7a66"],
+  ["rocks", "หินเทียม (สแกน)", "#77706a"], ["logs", "ซุงเทียม (สแกน)", "#8e6b4e"], ["terrain", "พื้นดิน (สแกน)", "#b49b75"],
+  ["design", "กำแพง ทางเดิน สะพาน (แบบ)", "#a7a39b"], ["water", "ผิวน้ำ (แบบ WL −0.60)", "#2f5d55"], ["missing", "ต้นตามแบบที่ไม่พบ", "#d2532e"],
+];
+function setVisible(k, v) { for (const o of layers[k] || []) o.visible = v; }
+function buildUI(js) {
+  const cnt = { trees: js.counts.trees, frames: js.counts.frames, arttrees: 3, logs: 5, missing: js.plan_not_found.length };
+  const lw = $("layers");
+  for (const [k, label, col] of LAYERS) {
+    if (!layers[k]) continue;
+    const id = "lay-" + k;
+    const lab = document.createElement("label");
+    lab.className = "tog";
+    lab.innerHTML = `<input type="checkbox" id="${id}" checked><span class="box"></span><span class="sw" style="background:${col}"></span><span class="name">${label}</span><span class="n">${cnt[k] ?? ""}</span>`;
+    lw.appendChild(lab);
+    lab.querySelector("input").addEventListener("change", (e) => setVisible(k, e.target.checked));
+  }
+  const sh = document.createElement("label");
+  sh.className = "tog";
+  sh.innerHTML = `<input type="checkbox" id="lay-shadow" ${small ? "" : "checked"}><span class="box"></span><span class="sw" style="background:#2b2f2d"></span><span class="name">เงาแดด (บ่าย 13:45)</span><span class="n"></span>`;
+  lw.appendChild(sh);
+  const setShadow = (v) => { sun.castShadow = v; renderer.shadowMap.needsUpdate = true; scene.traverse((o) => { if (o.material) o.material.needsUpdate = true; }); };
+  sh.querySelector("input").addEventListener("change", (e) => setShadow(e.target.checked));
+  if (small) setShadow(false);
+  // species
+  const sp = Object.entries(js.species_counts).sort((a, b) => b[1] - a[1]);
+  const max = sp[0][1];
+  $("treecount").textContent = `${js.counts.trees} ต้น`;
+  const box = $("species");
+  sp.slice(0, 9).forEach(([n, c]) => {
+    box.insertAdjacentHTML("beforeend", `<div>${n}</div><div class="c">${c}</div><div class="bar"><i style="width:${(100 * c) / max}%"></i></div>`);
+  });
+  const rest = sp.slice(9).reduce((s, x) => s + x[1], 0);
+  if (rest) box.insertAdjacentHTML("beforeend", `<div style="color:var(--muted)">อื่นๆ ${sp.length - 9} ชนิด</div><div class="c">${rest}</div>`);
+  box.insertAdjacentHTML("beforeend", `<div style="grid-column:1/-1;font-size:12px;color:var(--muted);margin-top:4px">พบตรงแบบปลูก ${js.counts.plan_found} จาก 227 ต้น · ไม่อยู่ในแบบ ${js.counts.not_in_plan} ต้น</div>`);
+  // views
+  const vw = $("views");
+  js.cameras.forEach((c, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "vbtn"; b.textContent = c.name; b.id = "view-" + i;
+    b.addEventListener("click", () => { goTo(c); [...vw.children].forEach((x) => x.setAttribute("aria-pressed", String(x === b))); });
+    vw.appendChild(b);
+  });
+  const c0 = js.cameras[0];
+  camera.position.copy(B(...c0.p)); controls.target.copy(B(...c0.t)); camera.fov = Math.max(40, c0.fov); camera.updateProjectionMatrix();
+  vw.children[0].setAttribute("aria-pressed", "true");
+}
+
+let anim = null;
+function goTo(c) {
+  const p1 = B(...c.p), t1 = B(...c.t);
+  if (reduceMotion) { camera.position.copy(p1); controls.target.copy(t1); return; }
+  anim = { p0: camera.position.clone(), t0: controls.target.clone(), p1, t1, t: 0 };
+}
+
+// ---------- picking
+const ray = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+let down = null;
+canvas.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
+canvas.addEventListener("pointerup", (e) => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const vis = pickables.filter((m) => m.visible);
+  const objs = missingGroup.visible ? [...vis, missingGroup] : vis;
+  const hit = ray.intersectObjects(objs, true)[0];
+  if (!hit) { showInfo(null); return; }
+  if (hit.object.isInstancedMesh) {
+    const rec = data.instances[pickMap.get(hit.object.uuid)[hit.instanceId]];
+    showInfo(rec);
+  } else {
+    let g = hit.object; while (g && !g.userData.id) g = g.parent;
+    if (g) showMissing(g.userData, g.position);
+  }
+});
+const marker = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 8, 48), new THREE.MeshBasicMaterial({ color: 0xffc94a }));
+marker.rotation.x = Math.PI / 2; marker.visible = false; scene.add(marker);
+const ST = { "scanned": ["พบในสแกน · ตรงแบบปลูก", ""], "scanned, not in planting plan": ["พบในสแกน · ไม่อยู่ในแบบปลูก", "warn"] };
+function showInfo(rec) {
+  if (!rec || !rec.info) { $("info").hidden = true; marker.visible = false; return; }
+  const f = rec.info;
+  const [st, cls] = ST[f.status] || [f.status, ""];
+  const latin = f.species && f.species !== "unidentified" ? `<div class="lat">${f.species}</div>` : "";
+  $("infobody").innerHTML = `<div class="eyebrow">${f.code && f.code !== "?" ? "รหัสแบบปลูก " + f.code : "ต้นไม้นอกแบบปลูก"}</div>
+    <div class="t">${f.species_th}</div>${latin}
+    <div><span class="pill ${cls}">${st}</span></div>
+    <dl><dt>ความสูง</dt><dd>${Number(f.height).toFixed(2)} ม.</dd><dt>ทรงพุ่มกว้าง</dt><dd>${Number(f.crown_d).toFixed(2)} ม.</dd><dt>รหัสต้น</dt><dd>${f.id}</dd></dl>`;
+  $("info").hidden = false;
+  marker.position.copy(B(rec.p[0], rec.p[1], rec.p[2] + 0.15));
+  marker.scale.setScalar(Math.max(0.8, (f.crown_d || 2) / 2));
+  marker.visible = true;
+}
+function showMissing(m, pos) {
+  const noscan = !m.status.startsWith("in scan");
+  $("infobody").innerHTML = `<div class="eyebrow">รหัสแบบปลูก ${m.code}</div><div class="t">${m.species_th}</div>
+    <div><span class="pill warn">${noscan ? "ไม่มีข้อมูลสแกนตรงนี้" : "ในพื้นที่สแกน แต่ไม่พบต้น (ยังไม่ปลูก หรือเตี้ยกว่า 2 ม.)"}</span></div>
+    <dl><dt>รหัสต้น</dt><dd>${m.id}</dd></dl>`;
+  $("info").hidden = false;
+  marker.position.copy(pos).add(new THREE.Vector3(0, 0.15, 0)); marker.scale.setScalar(0.9); marker.visible = true;
+}
+$("close").addEventListener("click", () => showInfo(null));
+
+// ---------- loop
+const needle = $("needle");
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize); resize();
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  if (anim) {
+    anim.t = Math.min(1, anim.t + dt / 1.1);
+    const k = anim.t < 0.5 ? 4 * anim.t ** 3 : 1 - (-2 * anim.t + 2) ** 3 / 2;
+    camera.position.lerpVectors(anim.p0, anim.p1, k); controls.target.lerpVectors(anim.t0, anim.t1, k);
+    if (anim.t >= 1) anim = null;
+  }
+  controls.update();
+  const d = new THREE.Vector3().subVectors(controls.target, camera.position);
+  needle.style.transform = `rotate(${Math.atan2(d.x, -d.z) * -180 / Math.PI}deg)`;
+  renderer.render(scene, camera);
+});
+
+// ---------- load everything (after all the declarations above)
+try {
+  const [site, lib, js] = await Promise.all([load("site"), load("lib"), fetch("trees.json").then((r) => r.json())]);
+  data = js;
+  buildSite(site.scene);
+  buildTrees(lib.scene, js);
+  buildMissing(js);
+  buildUI(js);
+  $("load").hidden = true;
+} catch (err) {
+  $("loadmsg").textContent = "โหลดไม่สำเร็จ: " + (err && err.message ? err.message : err) + " · ลองรีเฟรชหน้าอีกครั้ง";
+  console.error(err);
+}
+</script>
+</body>
+</html>
