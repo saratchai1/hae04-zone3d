@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="HAE04 water buffalo zone, as-built 3D from the laser scans of 16-17.11.2026">
+<meta name="description" content="HAE04 water buffalo zone, as-built 3D from the laser scans of 16-17.11.2026 (model v3d, 20.11.2026)">
 <meta name="robots" content="noindex, nofollow">
 <title>HAE04 Buffalo Zone 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -124,7 +124,7 @@ button { font: inherit; color: inherit; }
     <div class="eyebrow">HAE04 · As-built 3D</div>
     <div style="font-size:17px;font-weight:600">กำลังโหลดโมเดลโซนควายน้ำ</div>
     <div class="track"><i id="loadbar"></i></div>
-    <div class="msg" id="loadmsg">0.0 / 11.0 MB</div>
+    <div class="msg" id="loadmsg">0.0 / 26.0 MB</div>
   </div>
 </div>
 
@@ -132,7 +132,7 @@ button { font: inherit; color: inherit; }
   <div>
     <div class="eyebrow">HAE04 · โซนควายน้ำ · As-built</div>
     <h1>แบบจำลอง 3 มิติจากสแกน</h1>
-    <div class="sub">Point cloud 11 สถานี (16–17.11.2026) · ต้นไม้วัดตำแหน่ง ความสูง และทรงพุ่มจากสแกน</div>
+    <div class="sub">Point cloud 11 สถานี (16–17.11.2026) · โมเดล v3d (20.11.2026) · ต้นไม้วัดตำแหน่ง ความสูง และทรงพุ่มจากสแกน</div>
   </div>
   <div class="group">
     <div class="lab">มุมมอง</div>
@@ -148,7 +148,7 @@ button { font: inherit; color: inherit; }
   </div>
   <div class="note">
     ตำแหน่งต้นไม้, ความสูง, ความกว้างทรงพุ่ม วัดจากสแกนจริง · ชนิดจากแบบปลูก (PDF แผ่น 15–17) · โมเดลต้นไม้เป็นทรงตามกลุ่มชนิด (ตาล, ทรงสูงอย่างยางนา, ทรงพุ่มกลม, ทรงย้อย) ไม่ใช่รูปทรงจริงทีละต้น ·
-    กำแพง ทางเดิน สะพาน ราว บ่อ และผิวน้ำมาจากแบบ Revit ไม่ได้มาจากสแกน · ความสูงเป็นเมตรเหนือพื้นที่โคนต้น
+    หินเทียม ซุง ตลิ่ง ขอบหินริมบ่อ ม้านั่ง แพ และระดับน้ำ (−1.12) มาจากสแกน ส่วนที่สแกนไม่เห็นเป็นการเดา · ทางเดินหลัก สะพาน และเปลือกบ่อบางส่วนยังมาจากแบบ Revit · ความสูงต้นไม้เป็นเมตรเหนือพื้นที่โคนต้น
   </div>
 </aside>
 
@@ -239,7 +239,7 @@ const addTo = (k, o) => { (layers[k] ||= []).push(o); };
 
 // ---------- loading
 // Each model ships as base64 text (artifact hosting does not serve .glb); the leaf textures are plain PNGs in tex/.
-const files = { site: ["site.glb.b64.txt", 8208512], lib: ["trees_lib.glb.b64.txt", 2812480] };
+const files = { site: ["site.glb.b64.txt", 14266348], ground: ["ground.glb.b64.txt", 8157244], lib: ["trees_lib.glb.b64.txt", 3536856] };
 const got = {}, total = Object.values(files).reduce((s, f) => s + f[1], 0) / 1e6;
 const progress = () => {
   const mb = Object.values(got).reduce((s, v) => s + v, 0) / 1e6;
@@ -283,7 +283,9 @@ function buildSite(root) {
     const n = o.name || (o.parent && o.parent.name) || "";
     o.castShadow = true; o.receiveShadow = true;
     if (n.startsWith("WATER")) { o.material = water; o.castShadow = false; addTo("water", o); }
-    else if (n.startsWith("Z_Terrain")) { o.castShadow = false; addTo("terrain", o); }
+    else if (n.startsWith("Z_Terrain") || n.startsWith("GROUND")) { o.castShadow = false; addTo("terrain", o); }
+    else if (n.startsWith("BANK")) { o.castShadow = false; addTo("bank", o); }
+    else if (n.startsWith("FURN")) addTo("furniture", o);
     else if (n.startsWith("DES_")) addTo("design", o);
     else if (n.startsWith("Z_LOG")) addTo("logs", o);
     else if (n.startsWith("Z_ArtificialTree")) addTo("arttrees", o);
@@ -337,14 +339,14 @@ function buildTrees(libRoot, js) {
 const missingGroup = new THREE.Group();
 function buildMissing(js) {
   scene.updateMatrixWorld(true);
-  const terr = (layers.terrain || [])[0];
+  const terr = [...(layers.terrain || []), ...(layers.bank || [])];   // every ground surface (v3d: several objects)
   const ray = new THREE.Raycaster();
   const red = new THREE.MeshBasicMaterial({ color: 0xd2532e }), grey = new THREE.MeshBasicMaterial({ color: 0x8b958f });
   const pin = new THREE.CylinderGeometry(0.06, 0.06, 2.2, 8), ring = new THREE.TorusGeometry(0.55, 0.07, 6, 28);
   js.plan_not_found.forEach((m) => {
     const p = B(m.x, m.y, 0);
     let y = -0.5;
-    if (terr) { ray.set(new THREE.Vector3(p.x, 60, p.z), new THREE.Vector3(0, -1, 0)); const h = ray.intersectObject(terr, false)[0]; if (h) y = h.point.y; }
+    if (terr.length) { ray.set(new THREE.Vector3(p.x, 60, p.z), new THREE.Vector3(0, -1, 0)); const h = ray.intersectObjects(terr, false)[0]; if (h) y = h.point.y; }
     const mat = m.status.startsWith("in scan") ? red : grey;
     const g = new THREE.Group();
     const a = new THREE.Mesh(pin, mat); a.position.y = 1.1;
@@ -359,12 +361,13 @@ function buildMissing(js) {
 // ---------- UI
 const LAYERS = [
   ["trees", "ต้นไม้ (โมเดลตามชนิด)", "#3f8a5c"], ["frames", "โครงค้ำต้นไม้", "#7c1d22"], ["arttrees", "ต้นไม้เทียม REV E", "#8a7a66"],
-  ["rocks", "หินเทียม (สแกน)", "#77706a"], ["logs", "ซุงเทียม (สแกน)", "#8e6b4e"], ["terrain", "พื้นดิน (สแกน)", "#b49b75"],
-  ["design", "กำแพง ทางเดิน สะพาน (แบบ)", "#a7a39b"], ["water", "ผิวน้ำ (แบบ WL −0.60)", "#2f5d55"], ["missing", "ต้นตามแบบที่ไม่พบ", "#d2532e"],
+  ["rocks", "หินเทียม (สแกน)", "#77706a"], ["logs", "ซุงเทียม (สแกน)", "#8e6b4e"], ["furniture", "ม้านั่งซุง แพไม้ไผ่ (สแกน)", "#a08156"],
+  ["bank", "ตลิ่งและลานคอนกรีตริมบ่อ (สแกน)", "#9c927f"], ["terrain", "พื้นดิน ทางเดิน (สแกน)", "#b49b75"],
+  ["design", "ทางเดิน สะพาน บ่อ (แบบ Revit)", "#a7a39b"], ["water", "ผิวน้ำ (วัดจริง WL −1.12)", "#2f5d55"], ["missing", "ต้นตามแบบที่ไม่พบ", "#d2532e"],
 ];
 function setVisible(k, v) { for (const o of layers[k] || []) o.visible = v; }
 function buildUI(js) {
-  const cnt = { trees: js.counts.trees, frames: js.counts.frames, arttrees: 3, logs: 5, missing: js.plan_not_found.length };
+  const cnt = { trees: js.counts.trees, frames: js.counts.frames, arttrees: 3, logs: 8, missing: js.plan_not_found.length };
   const lw = $("layers");
   for (const [k, label, col] of LAYERS) {
     if (!layers[k]) continue;
@@ -486,9 +489,10 @@ renderer.setAnimationLoop(() => {
 
 // ---------- load everything (after all the declarations above)
 try {
-  const [site, lib, js] = await Promise.all([load("site"), load("lib"), fetch("trees.json").then((r) => r.json())]);
+  const [site, ground, lib, js] = await Promise.all([load("site"), load("ground"), load("lib"), fetch("trees.json").then((r) => r.json())]);
   data = js;
   buildSite(site.scene);
+  buildSite(ground.scene);
   buildTrees(lib.scene, js);
   buildMissing(js);
   buildUI(js);
